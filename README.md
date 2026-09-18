@@ -49,3 +49,13 @@ chmod +x ~/.local/share/cairyviewer/cairyviewer
 mkdir -p ~/.local/bin
 ln -sf ~/.local/share/cairyviewer/cairyviewer ~/.local/bin/cairyviewer
 (Ensure ~/.local/bin is present in your $PATH in ~/.bashrc or ~/.profile.)
+
+Step 3: Desktop Entry & File Manager Integration
+To register cairyviewer with your desktop environment so it appears in application menus and "Open With..." dialogs (Thunar, PCManFM, Nautilus):
+
+Copy or place an icon (e.g., cairyimgviewer.png) into ~/.local/share/icons/:
+
+```console
+mkdir -p ~/.local/share/icons
+cp ~/.local/share/cairyviewer/cairyimgviewer.png ~/.local/share/icons/cairyviewer.png
+```
