@@ -1,0 +1,404 @@
+#!/usr/bin/env python3
+import sys
+import os
+import re
+import urllib.parse
+import subprocess
+import shutil
+import gi
+
+gi.require_version('Gtk', '3.0')
+gi.require_version('Gio', '2.0')
+from gi.repository import Gtk, Gdk, GdkPixbuf, GLib, Gio
+
+class ImageCanvas(Gtk.DrawingArea):
+    """Custom drawing area to smoothly render and scale images while keeping aspect ratio."""
+    def __init__(self, parent):
+        super().__init__()
+        self.parent = parent
+        self.pixbuf = None
+        self.current_filepath = None
+        self.zoom_factor = 1.0
+        self.offset_x = 0.0
+        self.offset_y = 0.0
+        self.is_dragging = False
+        self.clicked_on_image = False
+        self.click_x = 0.0
+        self.click_y = 0.0
+        self.drag_start_x = 0.0
+        self.drag_start_y = 0.0
+        
+        self.add_events(Gdk.EventMask.SCROLL_MASK | 
+                        Gdk.EventMask.BUTTON_PRESS_MASK | 
+                        Gdk.EventMask.BUTTON_RELEASE_MASK | 
+                        Gdk.EventMask.POINTER_MOTION_MASK)
+        
+        self.connect("scroll-event", self.on_scroll)
+        self.connect("button-press-event", self.on_button_press)
+        self.connect("button-release-event", self.on_button_release)
+        self.connect("motion-notify-event", self.on_motion)
+        
+        # Outbound Drag & Drop (Dragging the image OUT to other apps)
+        self.connect("drag-data-get", self.on_drag_data_get)
+        self.connect("drag-begin", self.on_drag_begin)
+
+    def set_image(self, filepath):
+        try:
+            self.current_filepath = filepath
+            self.pixbuf = GdkPixbuf.Pixbuf.new_from_file(filepath)
+            self.reset_zoom()
+        except Exception as e:
+            print(f"Error loading image: {e}")
+
+    def reset_zoom(self):
+        self.zoom_factor = 1.0
+        self.offset_x = 0.0
+        self.offset_y = 0.0
+        self.queue_draw()
+
+    def zoom(self, amount):
+        self.zoom_factor *= amount
+        self.zoom_factor = max(0.1, min(self.zoom_factor, 20.0))
+        if abs(self.zoom_factor - 1.0) < 0.05:
+            self.reset_zoom()
+        else:
+            self.queue_draw()
+
+    def is_point_on_image(self, x, y):
+        if not self.pixbuf: return False
+        aw, ah = self.get_allocated_width(), self.get_allocated_height()
+        pw, ph = self.pixbuf.get_width(), self.pixbuf.get_height()
+        scale = min(aw / pw, ah / ph) * self.zoom_factor
+        img_w, img_h = pw * scale, ph * scale
+        img_x = (aw - img_w) / 2 + self.offset_x
+        img_y = (ah - img_h) / 2 + self.offset_y
+        return (img_x <= x <= img_x + img_w) and (img_y <= y <= img_y + img_h)
+
+    def on_scroll(self, widget, event):
+        if event.direction == Gdk.ScrollDirection.UP:
+            self.zoom(1.15)
+        elif event.direction == Gdk.ScrollDirection.DOWN:
+            self.zoom(0.85)
+        return True
+
+    def on_button_press(self, widget, event):
+        if event.button == 1: # Left Click
+            self.is_dragging = True
+            self.click_x, self.click_y = event.x, event.y
+            self.drag_start_x = event.x - self.offset_x
+            self.drag_start_y = event.y - self.offset_y
+            self.clicked_on_image = self.is_point_on_image(event.x, event.y)
+            return True # Consume left click for dragging
+        return False # Let right-click (button 3) pass to trigger the menu
+
+    def on_button_release(self, widget, event):
+        if event.button == 1:
+            self.is_dragging = False
+        return True
+
+    def on_motion(self, widget, event):
+        if self.is_dragging:
+            if self.zoom_factor <= 1.0:
+                if abs(event.x - self.click_x) > 10 or abs(event.y - self.click_y) > 10:
+                    if self.clicked_on_image:
+                        targets = Gtk.TargetList.new([Gtk.TargetEntry.new("text/uri-list", 0, 0)])
+                        self.drag_begin_with_coordinates(targets, Gdk.DragAction.COPY, 1, event, int(event.x), int(event.y))
+                    else:
+                        self.parent.begin_move_drag(1, int(event.x_root), int(event.y_root), event.time)
+                    self.is_dragging = False
+            else:
+                self.offset_x = event.x - self.drag_start_x
+                self.offset_y = event.y - self.drag_start_y
+                self.queue_draw()
+        return True
+
+    def on_drag_begin(self, widget, context):
+        if self.pixbuf:
+            width, height = self.pixbuf.get_width(), self.pixbuf.get_height()
+            scale = min(128 / width, 128 / height)
+            thumb = self.pixbuf.scale_simple(int(width * scale), int(height * scale), GdkPixbuf.InterpType.BILINEAR)
+            Gtk.drag_set_icon_pixbuf(context, thumb, int(thumb.get_width() / 2), int(thumb.get_height() / 2))
+
+    def on_drag_data_get(self, widget, drag_context, data, info, time):
+        if self.current_filepath:
+            uri = "file://" + urllib.parse.quote(os.path.abspath(self.current_filepath), safe="/")
+            data.set_uris([uri])
+
+    def do_draw(self, context):
+        if not self.pixbuf: return
+        aw, ah = self.get_allocated_width(), self.get_allocated_height()
+        pw, ph = self.pixbuf.get_width(), self.pixbuf.get_height()
+        scale = min(aw / pw, ah / ph) * self.zoom_factor
+        context.translate((aw - pw * scale) / 2 + self.offset_x, (ah - ph * scale) / 2 + self.offset_y)
+        context.scale(scale, scale)
+        Gdk.cairo_set_source_pixbuf(context, self.pixbuf, 0, 0)
+        context.paint()
+
+class MagicalViewer(Gtk.Window):
+    def __init__(self, filepath):
+        GLib.set_prgname("cairyviewer")
+        GLib.set_application_name("Cairy Image Viewer")
+        super().__init__(title="Cairy Image Viewer")
+        self.set_name("cairyviewer")
+        
+        self.set_decorated(False) 
+        self.set_default_size(800, 600)
+        self.is_fullscreen = False
+
+        try:
+            self.set_icon_from_file("/home/yonn/Pictures/ico/cairyimgviewer.png")
+        except: pass
+
+        # Inbound Drag & Drop
+        self.drag_dest_set(Gtk.DestDefaults.ALL, [Gtk.TargetEntry.new("text/uri-list", 0, 0)], Gdk.DragAction.COPY)
+        self.connect("drag-data-received", self.on_drag_data_received)
+
+        # Directory for custom Open-With apps
+        self.apps_dir = os.path.expanduser("~/.config/cairyviewer/apps")
+        os.makedirs(self.apps_dir, exist_ok=True)
+
+        # CSS Styling
+        style_provider = Gtk.CssProvider()
+        style_provider.load_from_data(b"""
+            window { background-color: #000000; border-radius: 0px; }
+            .magic-controls { background-color: rgba(15, 15, 15, 0.85); border-radius: 20px; padding: 10px; border: 1px solid #333; }
+            button { background: transparent; border: none; color: #eee; }
+            button:hover { background-color: rgba(255, 255, 255, 0.1); border-radius: 15px; }
+            .magic-menu { background-color: #121212; color: #ddd; border: 1px solid #444; }
+            .path-hud {
+                font-family: "DejaVu Sans", "Noto Sans", "Hack", sans;
+                font-size: 14px;
+                color: rgba(220, 220, 220, 0.85);
+                background-color: rgba(10, 10, 10, 0.65);
+                border-radius: 8px;
+                padding: 6px 14px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+        """)
+        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), style_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+        self.filepath = os.path.abspath(filepath)
+        self.directory = os.path.dirname(self.filepath)
+        self.images = self.get_images()
+        self.current_idx = self.images.index(self.filepath) if self.filepath in self.images else 0
+
+        self.overlay = Gtk.Overlay()
+        self.add(self.overlay)
+
+        self.canvas = ImageCanvas(self)
+        self.overlay.add(self.canvas)
+
+        # Floating Path HUD (Top-Left overlay)
+        self.path_hud = Gtk.Label()
+        self.path_hud.set_halign(Gtk.Align.START)
+        self.path_hud.set_valign(Gtk.Align.START)
+        self.path_hud.set_margin_top(20)
+        self.path_hud.set_margin_left(20)
+        self.path_hud.get_style_context().add_class("path-hud")
+        self.path_hud.set_no_show_all(True) # Hidden until toggled
+        self.overlay.add_overlay(self.path_hud)
+
+        # Floating Controls Box (Bottom-Center overlay)
+        self.control_box = Gtk.Box(spacing=10)
+        self.control_box.set_halign(Gtk.Align.CENTER)
+        self.control_box.set_valign(Gtk.Align.END)
+        self.control_box.set_margin_bottom(30)
+        self.control_box.get_style_context().add_class("magic-controls")
+
+        for icon, func in [("go-previous-symbolic", self.on_prev),
+                           ("zoom-out-symbolic", lambda x: self.canvas.zoom(0.8)),
+                           ("zoom-original-symbolic", lambda x: self.canvas.reset_zoom()),
+                           ("zoom-in-symbolic", lambda x: self.canvas.zoom(1.2)),
+                           ("view-fullscreen-symbolic", self.on_fullscreen),
+                           ("window-close-symbolic", lambda x: Gtk.main_quit()),
+                           ("go-next-symbolic", self.on_next)]:
+            btn = Gtk.Button.new_from_icon_name(icon, Gtk.IconSize.LARGE_TOOLBAR)
+            btn.connect("clicked", func)
+            self.control_box.pack_start(btn, False, False, 0)
+
+        self.overlay.add_overlay(self.control_box)
+
+        # Build Right-Click Menu
+        self.build_menu()
+
+        # Connect events
+        self.canvas.connect("button-press-event", self.on_canvas_right_click)
+        self.connect("key-press-event", self.on_key_press)
+
+        self.load_current_image()
+
+    def update_path_hud(self):
+        if self.images:
+            current_path = self.images[self.current_idx]
+            self.path_hud.set_text(current_path)
+
+    def load_current_image(self):
+        if self.images:
+            self.canvas.set_image(self.images[self.current_idx])
+            self.set_title(os.path.basename(self.images[self.current_idx]))
+            self.update_path_hud()
+
+    def on_fullscreen(self, *args):
+        if self.is_fullscreen:
+            self.unfullscreen()
+            self.path_hud.hide()
+        else:
+            self.fullscreen()
+            self.path_hud.show()
+        self.is_fullscreen = not self.is_fullscreen
+
+    def open_file_location(self, widget):
+        if self.images:
+            current_file = self.images[self.current_idx]
+            folder_path = os.path.dirname(os.path.abspath(current_file))
+            subprocess.Popen(["pcmanfm", folder_path])
+
+    def build_menu(self):
+        """Dynamically constructs the right-click menu, absorbing custom .desktop apps."""
+        if hasattr(self, 'menu') and self.menu:
+            self.menu.destroy()
+            
+        self.menu = Gtk.Menu()
+        self.menu.get_style_context().add_class("magic-menu")
+
+        item_loc = Gtk.MenuItem(label="Open File Location (PCManFM)")
+        item_loc.connect("activate", self.open_file_location)
+        self.menu.append(item_loc)
+
+        item_gimp = Gtk.MenuItem(label="Forge in GIMP")
+        item_gimp.connect("activate", self.open_in_gimp)
+        self.menu.append(item_gimp)
+
+        item_wall = Gtk.MenuItem(label="Manifest as Wallpaper")
+        item_wall.connect("activate", self.set_wallpaper)
+        self.menu.append(item_wall)
+        
+        self.menu.append(Gtk.SeparatorMenuItem())
+
+        # Dynamic options from ~/.config/cairyviewer/apps/
+        has_apps = False
+        if os.path.exists(self.apps_dir):
+            for f in os.listdir(self.apps_dir):
+                if f.endswith(".desktop"):
+                    filepath = os.path.join(self.apps_dir, f)
+                    try:
+                        app_info = Gio.DesktopAppInfo.new_from_filename(filepath)
+                        if app_info:
+                            item = Gtk.MenuItem(label=f"Open in {app_info.get_name()}")
+                            item.connect("activate", lambda w, app=app_info: self.launch_app(app))
+                            self.menu.append(item)
+                            has_apps = True
+                    except Exception as e:
+                        print(f"Failed to read {f}: {e}")
+
+        if not has_apps:
+            item_hint = Gtk.MenuItem(label="(Drag a .desktop file here to add apps)")
+            item_hint.set_sensitive(False)
+            self.menu.append(item_hint)
+
+        self.menu.show_all()
+
+    def get_images(self):
+        """Fetches images and sorts by Modification Date (Newest First)."""
+        exts = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp'}
+        try:
+            files = [os.path.join(self.directory, f) for f in os.listdir(self.directory) if os.path.splitext(f)[1].lower() in exts]
+            sorted_files = sorted(files, key=lambda x: os.path.getmtime(x) if os.path.exists(x) else 0, reverse=True)
+            return sorted_files if sorted_files else [self.filepath]
+        except: 
+            return [self.filepath]
+
+    def on_drag_data_received(self, widget, drag_context, x, y, data, info, time):
+        """Absorbs dropped files. Images load, .desktop files expand the right-click menu."""
+        uris = data.get_uris()
+        if uris:
+            uri = uris[0]
+            if uri.startswith("file://"):
+                dropped_file = urllib.parse.unquote(uri[7:])
+                
+                if dropped_file.endswith(".desktop"):
+                    shutil.copy(dropped_file, self.apps_dir)
+                    self.build_menu()
+                    print(f"Absorbed {os.path.basename(dropped_file)} into the menu.")
+                else:
+                    self.filepath = os.path.abspath(dropped_file)
+                    self.directory = os.path.dirname(self.filepath)
+                    self.images = self.get_images()
+                    self.current_idx = self.images.index(self.filepath) if self.filepath in self.images else 0
+                    self.load_current_image()
+                    
+        Gtk.drag_finish(drag_context, True, False, time)
+
+    def on_prev(self, *args):
+        if self.images:
+            self.current_idx = (self.current_idx - 1) % len(self.images)
+            self.load_current_image()
+
+    def on_next(self, *args):
+        if self.images:
+            self.current_idx = (self.current_idx + 1) % len(self.images)
+            self.load_current_image()
+
+    def on_canvas_right_click(self, widget, event):
+        if event.button == 3:
+            self.menu.popup_at_pointer(event)
+            return True
+        return False
+
+    def launch_app(self, app_info):
+        """Uses GLib/Gio to launch an external app."""
+        current_file = self.images[self.current_idx]
+        files = [Gio.File.new_for_path(current_file)]
+        try:
+            app_info.launch(files, None)
+        except Exception as e:
+            print(f"Failed to launch app: {e}")
+
+    def open_in_gimp(self, widget):
+        if self.images:
+            subprocess.Popen(["gimp", self.images[self.current_idx]])
+        
+    def set_wallpaper(self, widget):
+        if not self.images:
+            return
+        current_file = self.images[self.current_idx]
+        
+        wallpaper_dir = os.path.expanduser("~/Pictures/wallpapers")
+        os.makedirs(wallpaper_dir, exist_ok=True)
+        
+        dest_file = os.path.join(wallpaper_dir, os.path.basename(current_file))
+        shutil.copy2(current_file, dest_file)
+        
+        try:
+            result = subprocess.run(["xfconf-query", "-c", "xfce4-desktop", "-l"], capture_output=True, text=True)
+            for line in result.stdout.splitlines():
+                if "last-image" in line:
+                    prop_path = line.strip()
+                    subprocess.run(["xfconf-query", "-c", "xfce4-desktop", "-p", prop_path, "-s", dest_file])
+        except Exception as e:
+            print(f"The wallpaper failed to manifest: {e}")
+
+    def on_key_press(self, widget, event):
+        key = Gdk.keyval_name(event.keyval)
+        if key == "Right": self.on_next()
+        elif key == "Left": self.on_prev()
+        elif key in ("plus", "equal"): self.canvas.zoom(1.2)
+        elif key == "minus": self.canvas.zoom(0.8)
+        elif key in ("0", "1"): self.canvas.reset_zoom()
+        elif key == "f": self.on_fullscreen()
+        elif key == "Escape": 
+            Gtk.main_quit()
+        elif key in ("q", "Q"):
+            if self.is_fullscreen:
+                self.on_fullscreen()
+            else:
+                Gtk.main_quit()
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        app = MagicalViewer(sys.argv[1])
+        app.connect("destroy", Gtk.main_quit)
+        app.show_all()
+        Gtk.main()
+    else:
+        print("Usage: python viewer.py <image_path>")
