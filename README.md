@@ -8,8 +8,7 @@ cairyviewer /path/to/image.png
 # Open from the current directory
 cairyviewer .
 
-Controls & Shortcuts,  
-Action,Shortcut / Input
+Controls & ShortcutsAction,Shortcut / Input
 Next Image,"Right Arrow, Page Down, Space, J"
 Previous Image,"Left Arrow, Page Up, K"
 Zoom In / Out,"Scroll Up / Scroll Down (cursor-centered), + / -"
