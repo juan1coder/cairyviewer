@@ -1,11 +1,13 @@
 # cairyviewer
 cairyviewer is an image viewer, with minimalism in mind in python, easy to setup and configure. 
 
-Launching from the TerminalBash# Open a specific image (automatically indexes all sibling images in the folder)
+Launching from the Terminal
+# Open a specific image (automatically indexes all sibling images in the folder)
 cairyviewer /path/to/image.png
 
 # Open from the current directory
 cairyviewer .
+
 Controls & Shortcuts,  
 Action,Shortcut / Input
 Next Image,"Right Arrow, Page Down, Space, J"
