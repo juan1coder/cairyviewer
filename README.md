@@ -1,7 +1,7 @@
 # Cairy Image Viewer
 
 A minimalist, lightweight image viewer for Linux built in Python 3, powered by GTK 3 (`PyGObject`) and Cairo for smooth, hardware-accelerated rendering.
-
+<img src="cairyimgviewer.png" alt="Cairy Viewer" width="60%">
 ![Cairy Viewer](cairyimgviewer.png)
 
 ---
