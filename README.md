@@ -6,7 +6,20 @@ cairyviewer /path/to/image.png
 
 # Open from the current directory
 cairyviewer .
-Controls & ShortcutsActionShortcut / InputNext ImageRight Arrow, Page Down, Space, JPrevious ImageLeft Arrow, Page Up, KZoom In / OutScroll Up / Scroll Down (cursor-centered), + / -Reset Zoom / Fit to Window0, R, Double-ClickPan / Move ViewportLeft Click + Drag (when zoomed in)Outbound Drag-and-DropLeft Click + Drag into external app (browser, GIMP, chat, etc.)Toggle FullscreenF, F11Copy to ClipboardC, Ctrl + CSend to TrashDelete, Shift + DeleteQuitQ, Escape3. Installation & System IntegrationStep 1: Install System DependenciesOn Debian/Ubuntu-based distributions:Bashsudo apt update
+Controls & Shortcuts,  
+Action,Shortcut / Input
+Next Image,"Right Arrow, Page Down, Space, J"
+Previous Image,"Left Arrow, Page Up, K"
+Zoom In / Out,"Scroll Up / Scroll Down (cursor-centered), + / -"
+Reset Zoom / Fit to Window,"0, R, Double-Click"
+Pan / Move Viewport,Left Click + Drag (when zoomed in)
+Outbound Drag-and-Drop,"Left Click + Drag into external app (browser, GIMP, chat, etc.)"
+Toggle Fullscreen,"F, F11"
+Copy to Clipboard,"C, Ctrl + C"
+Send to Trash,"Delete, Shift + Delete"
+Quit,"Q, Escape"
+
+Installation & System IntegrationStep 1: Install System DependenciesOn Debian/Ubuntu-based distributions:Bashsudo apt update
 sudo apt install -y python3 python3-gi python3-gi-cairo gir1.2-gtk-3.0
 On Arch Linux:Bashsudo pacman -S python python-gobject gtk3
 On Fedora:Bashsudo dnf install -y python3-gobject gtk3
