@@ -1,61 +1,134 @@
-# Cairy IMG viewer.
-cairyviewer is an image viewer, with minimalism in mind in python, easy to setup and configure. 
-1. Codebase Overview & Description
-Cairyviewer is a lightweight, minimalist image viewer built in Python 3 using GTK 3 (PyGObject) and Cairo for hardware-accelerated rendering.
+# Cairy Image Viewer
 
-Architecture
-ImageCanvas(Gtk.DrawingArea): Custom rendering surface that handles aspect-ratio-preserving scaling, cursor-relative zooming (from 0.1× to 20.0×), coordinate-offset panning, and outbound drag-and-drop (text/uri-list) so images can be dragged straight into other applications.
+A minimalist, lightweight image viewer for Linux built in Python 3, powered by GTK 3 (`PyGObject`) and Cairo for smooth, hardware-accelerated rendering.
 
-ImageViewer(Gtk.Window): The top-level window manager that monitors directory contents, sorts image files using natural alphanumeric ordering, manages GTK clipboard interactions, and supports safe file deletion using the FreeDesktop/GIO Trash API.
+![Cairy Viewer](cairyimgviewer.png)
 
-Launching from the Terminal
-# Open a specific image (automatically indexes all sibling images in the folder)
-cairyviewer /path/to/image.png
+---
 
-# Open from the current directory
-cairyviewer .
+## ✨ Features
 
-# Controls & Shortcuts
+- **Distraction-Free Interface**: Borderless, chrome-free canvas focusing entirely on your images.
+- **Hardware-Accelerated Canvas**: Smooth panning and cursor-centered zooming from 0.1× to 20.0× using Cairo.
+- **Seamless Directory Browsing**: Natural alphanumeric sorting of sibling images in the same folder.
+- **Outbound Drag-and-Drop**: Drag images directly from the viewer into web browsers, messengers, or image editors (`text/uri-list`).
+- **System Clipboard Support**: Instant one-key copy of the image directly to your desktop clipboard.
+- **Safe Trashing**: Integrated with FreeDesktop/GIO Trash API (`gio trash`) to safely remove files without permanent deletion.
 
-```php
-Next Image,"Right Arrow, Page Down, Space, J"
-Previous Image,"Left Arrow, Page Up, K"
-Zoom In / Out,"Scroll Up / Scroll Down (cursor-centered), + / -"
-Reset Zoom / Fit to Window,"0, R, Double-Click"
-Pan / Move Viewport,Left Click + Drag (when zoomed in)
-Outbound Drag-and-Drop,"Left Click + Drag into external app (browser, GIMP, chat, etc.)"
-Toggle Fullscreen,"F, F11"
-Copy to Clipboard,"C, Ctrl + C"
-Send to Trash,"Delete, Shift + Delete"
-Quit,"Q, Escape"
-```
+---
 
-Installation & System IntegrationStep 
-1: Install System DependenciesOn Debian/Ubuntu-based distributions: 
-Bash
+## 🏗️ Architecture
+
+- **`ImageCanvas (Gtk.DrawingArea)`**: Custom rendering surface managing aspect-ratio-preserving scaling, cursor-relative zoom transformations, pan offsets, and drag-and-drop source negotiation.
+- **`ImageViewer (Gtk.Window)`**: Top-level application window managing directory scanning, keyboard and pointer event dispatching, window state (fullscreen/windowed), clipboard transfers, and file management operations.
+
+---
+
+## 📦 Requirements & Dependencies
+
+`cairyviewer` requires Python 3 and GTK 3 bindings (`PyGObject`). Install the required dependencies using your distribution's package manager:
+
+### Debian / Ubuntu / Linux Mint
+```bash
 sudo apt update
 sudo apt install -y python3 python3-gi python3-gi-cairo gir1.2-gtk-3.0
-On Arch Linux:Bashsudo pacman -S python python-gobject gtk3
-On Fedora:Bashsudo dnf install -y python3-gobject gtk3
-Step 2: Quick Git Clone & Local Executable SetupTo make cairyviewer globally accessible from your user account without altering root system files:
+```
 
-# 1. Clone the repository
+### Arch Linux / Manjaro
+```bash
+sudo pacman -S python python-gobject gtk3
+```
+
+### Fedora
+```bash
+sudo dnf install -y python3-gobject gtk3
+```
+
+---
+
+## 🚀 Installation
+
+### 1. Clone & Set Up Local Executable
+
+Clone the repository and link the executable to your user binary path (`~/.local/bin`):
+
+```bash
+# Clone repository to local user share
 git clone https://github.com/juan1coder/cairyviewer.git ~/.local/share/cairyviewer
 
-# 2. Ensure executable permissions
+# Grant execute permissions
 chmod +x ~/.local/share/cairyviewer/cairyviewer
 
-# 3. Create a user-level symlink in ~/.local/bin
+# Create a symlink in ~/.local/bin
 mkdir -p ~/.local/bin
 ln -sf ~/.local/share/cairyviewer/cairyviewer ~/.local/bin/cairyviewer
-(Ensure ~/.local/bin is present in your $PATH in ~/.bashrc or ~/.profile.)
+```
 
-# Desktop Entry & File Manager Integration
-To register cairyviewer with your desktop environment so it appears in application menus and "Open With..." dialogs (Thunar, PCManFM, Nautilus):
+> **Note:** Ensure `~/.local/bin` is in your `$PATH`. If not, add `export PATH="$HOME/.local/bin:$PATH"` to your `~/.bashrc` or `~/.profile`.
 
-Copy or place an icon (e.g., cairyimgviewer.png) into ~/.local/share/icons/:
+---
 
-```console
+## 🖥️ Desktop & File Manager Integration
+
+To make `cairyviewer` available in your desktop application menus and "Open With..." options across file managers (Thunar, PCManFM, Nautilus, Nemo):
+
+### 1. Install Application Icon
+```bash
 mkdir -p ~/.local/share/icons
 cp ~/.local/share/cairyviewer/cairyimgviewer.png ~/.local/share/icons/cairyviewer.png
 ```
+
+### 2. Create Desktop Entry
+Create `~/.local/share/applications/cairyviewer.desktop`:
+
+```desktop
+[Desktop Entry]
+Name=Cairy Viewer
+Comment=Minimalist Cairo & GTK Image Viewer
+Exec=cairyviewer %F
+Terminal=false
+Type=Application
+Icon=cairyviewer
+Categories=Graphics;Viewer;2DGraphics;
+MimeType=image/bmp;image/gif;image/jpeg;image/jpg;image/png;image/tiff;image/webp;image/x-portable-pixmap;image/svg+xml;
+StartupNotify=true
+```
+
+### 3. Update Desktop Database
+```bash
+update-desktop-database ~/.local/share/applications
+```
+
+---
+
+## 🎮 Usage & Controls
+
+### Command Line
+```bash
+# Open a specific image file (sibling images are automatically indexed)
+cairyviewer /path/to/image.png
+
+# Open all images in the current working directory
+cairyviewer .
+```
+
+### Keyboard & Mouse Shortcuts
+
+| Action | Shortcut / Input |
+| :--- | :--- |
+| **Next Image** | <kbd>→</kbd>, <kbd>Page Down</kbd>, <kbd>Space</kbd>, <kbd>J</kbd> |
+| **Previous Image** | <kbd>←</kbd>, <kbd>Page Up</kbd>, <kbd>K</kbd> |
+| **Zoom In / Out** | `Mouse Wheel Up` / `Down` (cursor-centered), <kbd>+</kbd> / <kbd>-</kbd> |
+| **Reset Zoom / Fit to Window** | <kbd>0</kbd>, <kbd>R</kbd>, `Double-Click` |
+| **Pan / Move Viewport** | `Left-Click + Drag` (when zoomed in) |
+| **Outbound Drag-and-Drop** | `Left-Click + Drag` into external app (browser, GIMP, chat, etc.) |
+| **Toggle Fullscreen** | <kbd>F</kbd>, <kbd>F11</kbd> |
+| **Copy Image to Clipboard** | <kbd>C</kbd>, <kbd>Ctrl</kbd> + <kbd>C</kbd> |
+| **Send to System Trash** | <kbd>Delete</kbd>, <kbd>Shift</kbd> + <kbd>Delete</kbd> |
+| **Quit** | <kbd>Q</kbd>, <kbd>Esc</kbd> |
+
+---
+
+## 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).
