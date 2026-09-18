@@ -19,11 +19,16 @@ Copy to Clipboard,"C, Ctrl + C"
 Send to Trash,"Delete, Shift + Delete"
 Quit,"Q, Escape"
 
-Installation & System IntegrationStep 1: Install System DependenciesOn Debian/Ubuntu-based distributions:Bashsudo apt update
+Installation & System IntegrationStep 
+1: Install System DependenciesOn Debian/Ubuntu-based distributions: 
+Bash
+sudo apt update
 sudo apt install -y python3 python3-gi python3-gi-cairo gir1.2-gtk-3.0
 On Arch Linux:Bashsudo pacman -S python python-gobject gtk3
 On Fedora:Bashsudo dnf install -y python3-gobject gtk3
-Step 2: Quick Git Clone & Local Executable SetupTo make cairyviewer globally accessible from your user account without altering root system files:Bash# 1. Clone the repository
+Step 2: Quick Git Clone & Local Executable SetupTo make cairyviewer globally accessible from your user account without altering root system files:
+
+Bash# 1. Clone the repository
 git clone https://github.com/juan1coder/cairyviewer.git ~/.local/share/cairyviewer
 
 # 2. Ensure executable permissions
