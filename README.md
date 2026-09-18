@@ -1,5 +1,12 @@
 # Cairy IMG viewer.
 cairyviewer is an image viewer, with minimalism in mind in python, easy to setup and configure. 
+1. Codebase Overview & Description
+Cairyviewer is a lightweight, minimalist image viewer built in Python 3 using GTK 3 (PyGObject) and Cairo for hardware-accelerated rendering.
+
+Architecture
+ImageCanvas(Gtk.DrawingArea): Custom rendering surface that handles aspect-ratio-preserving scaling, cursor-relative zooming (from 0.1× to 20.0×), coordinate-offset panning, and outbound drag-and-drop (text/uri-list) so images can be dragged straight into other applications.
+
+ImageViewer(Gtk.Window): The top-level window manager that monitors directory contents, sorts image files using natural alphanumeric ordering, manages GTK clipboard interactions, and supports safe file deletion using the FreeDesktop/GIO Trash API.
 
 Launching from the Terminal
 # Open a specific image (automatically indexes all sibling images in the folder)
