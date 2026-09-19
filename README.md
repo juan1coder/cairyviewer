@@ -8,25 +8,42 @@ A minimalist, lightweight image viewer for Linux built in Python 3, powered by G
 
 ## ✨ Features
 
-- **Distraction-Free Interface**: Borderless, chrome-free canvas focusing entirely on your images.
-- **Hardware-Accelerated Canvas**: Smooth panning and cursor-centered zooming from 0.1× to 20.0× using Cairo.
-- **Seamless Directory Browsing**: Natural alphanumeric sorting of sibling images in the same folder.
+- **Distraction-Free Minimalist UI**: Clean, borderless canvas focusing purely on image content.
+- **Hardware-Accelerated Cairo Rendering**: Cursor-centered smooth zooming (from 0.1× to 20.0×) and responsive panning.
+- **Natural File Sorting**: Seamlessly browse sibling images in natural alphanumeric order.
+- **Unique Right-Click App Absorption**: Drag and drop any `.desktop` file onto the window to instantly add custom "Open in..." actions to your right-click context menu.
 - **Outbound Drag-and-Drop**: Drag images directly from the viewer into web browsers, messengers, or image editors (`text/uri-list`).
-- **System Clipboard Support**: Instant one-key copy of the image directly to your desktop clipboard.
-- **Safe Trashing**: Integrated with FreeDesktop/GIO Trash API (`gio trash`) to safely remove files without permanent deletion.
+- **Desktop Clipboard Integration**: Instant one-key copying of the image or URI to your clipboard.
+- **Safe Trashing**: Direct integration with the FreeDesktop/GIO Trash API (`gio trash`) to safely remove files without accidental permanent deletion.
 
 ---
 
-## 🏗️ Architecture
+## ⚡ Unique Feature: Dynamic Right-Click "Open With" Menu
 
-- **`ImageCanvas (Gtk.DrawingArea)`**: Custom rendering surface managing aspect-ratio-preserving scaling, cursor-relative zoom transformations, pan offsets, and drag-and-drop source negotiation.
-- **`ImageViewer (Gtk.Window)`**: Top-level application window managing directory scanning, keyboard and pointer event dispatching, window state (fullscreen/windowed), clipboard transfers, and file management operations.
+`cairyviewer` features a unique, dynamic context menu that can be expanded on the fly without editing configuration files or writing code.
+
+### How it works:
+1. **The Defined Folder**:  
+   Custom applications are stored in:  
+   `~/.config/cairyviewer/apps/`
+2. **Adding Apps via Drag-and-Drop**:  
+   Open your file manager, navigate to `/usr/share/applications/` (or `~/.local/share/applications/`), and drag your favorite application shortcuts (e.g., `gimp.desktop`, `inkscape.desktop`, `blender.desktop`, `shotwell.desktop`) **directly onto the `cairyviewer` window**.
+3. **Instant Absorption**:  
+   `cairyviewer` automatically copies the `.desktop` file into `~/.config/cairyviewer/apps/` and immediately rebuilds the right-click menu.
+4. **Accessing Your Apps**:  
+   Right-click anywhere on the image canvas. Your custom apps will appear under the menu as:
+   - `Open in GNU Image Manipulation Program`
+   - `Open in Inkscape`
+   - *(and any other tools you dropped!)*
 
 ---
 
-## 📦 Requirements & Dependencies
+## 📦 Dependencies & Missing Pip Packages
 
-`cairyviewer` requires Python 3 and GTK 3 bindings (`PyGObject`). Install the required dependencies using your distribution's package manager:
+All standard imports used in `cairyviewer` (`sys`, `os`, `re`, `urllib.parse`, `subprocess`, `shutil`) are part of the **Python Standard Library**—no `pip` installation is required for them!
+
+The only external dependency is **`gi` (PyGObject / GTK 3)**.  
+> **Recommendation:** Install PyGObject via your Linux distribution's package manager rather than `pip`. System packages are pre-compiled with Cairo and GTK C libraries.
 
 ### Debian / Ubuntu / Linux Mint
 ```bash
@@ -44,58 +61,55 @@ sudo pacman -S python python-gobject gtk3
 sudo dnf install -y python3-gobject gtk3
 ```
 
+*(If using a Python virtual environment, you can install via pip: `pip install PyGObject`, but ensure system development headers like `libgirepository1.0-dev` and `libcairo2-dev` are present).*
+
 ---
 
-## 🚀 Installation
+## 🚀 Easy Installation (`install.sh`)
 
-### 1. Clone & Set Up Local Executable
-
-Clone the repository and link the executable to your user binary path (`~/.local/bin`):
+An automated installation script is included. It checks dependencies, sets up executable symlinks, creates the `~/.config/cairyviewer/apps` folder, installs the desktop launcher, and updates desktop caches.
 
 ```bash
-# Clone repository to local user share
-git clone https://github.com/juan1coder/cairyviewer.git ~/.local/share/cairyviewer
+# 1. Clone the repository
+git clone https://github.com/juan1coder/cairyviewer.git
+cd cairyviewer
 
-# Grant execute permissions
-chmod +x ~/.local/share/cairyviewer/cairyviewer
+# 2. Run the installer
+chmod +x install.sh
+./install.sh
+```
 
-# Create a symlink in ~/.local/bin
+### Uninstallation
+To cleanly remove `cairyviewer` and its desktop shortcuts:
+```bash
+./install.sh --uninstall
+# or run:
+./uninstall.sh
+```
+
+---
+
+## 🛠️ Manual Installation (Without Script)
+
+If you prefer manual setup:
+
+```bash
+# 1. Make executable
+chmod +x cairyviewer
+
+# 2. Link to user binary path
 mkdir -p ~/.local/bin
-ln -sf ~/.local/share/cairyviewer/cairyviewer ~/.local/bin/cairyviewer
-```
+ln -sf "$(pwd)/cairyviewer" ~/.local/bin/cairyviewer
 
-> **Note:** Ensure `~/.local/bin` is in your `$PATH`. If not, add `export PATH="$HOME/.local/bin:$PATH"` to your `~/.bashrc` or `~/.profile`.
+# 3. Create the defined custom apps folder
+mkdir -p ~/.config/cairyviewer/apps
 
----
+# 4. Install icon & desktop entry
+mkdir -p ~/.local/share/icons ~/.local/share/applications
+cp cairyimgviewer.png ~/.local/share/icons/cairyviewer.png
+cp cairyviewer.desktop ~/.local/share/applications/cairyviewer.desktop
 
-## 🖥️ Desktop & File Manager Integration
-
-To make `cairyviewer` available in your desktop application menus and "Open With..." options across file managers (Thunar, PCManFM, Nautilus, Nemo):
-
-### 1. Install Application Icon
-```bash
-mkdir -p ~/.local/share/icons
-cp ~/.local/share/cairyviewer/cairyimgviewer.png ~/.local/share/icons/cairyviewer.png
-```
-
-### 2. Create Desktop Entry
-Create `~/.local/share/applications/cairyviewer.desktop`:
-
-```desktop
-[Desktop Entry]
-Name=Cairy Viewer
-Comment=Minimalist Cairo & GTK Image Viewer
-Exec=cairyviewer %F
-Terminal=false
-Type=Application
-Icon=cairyviewer
-Categories=Graphics;Viewer;2DGraphics;
-MimeType=image/bmp;image/gif;image/jpeg;image/jpg;image/png;image/tiff;image/webp;image/x-portable-pixmap;image/svg+xml;
-StartupNotify=true
-```
-
-### 3. Update Desktop Database
-```bash
+# 5. Update desktop database
 update-desktop-database ~/.local/share/applications
 ```
 
@@ -105,14 +119,14 @@ update-desktop-database ~/.local/share/applications
 
 ### Command Line
 ```bash
-# Open a specific image file (sibling images are automatically indexed)
+# Open a specific image (sibling images in the directory are automatically indexed)
 cairyviewer /path/to/image.png
 
 # Open all images in the current working directory
 cairyviewer .
 ```
 
-### Keyboard & Mouse Shortcuts
+### Controls & Shortcuts
 
 | Action | Shortcut / Input |
 | :--- | :--- |
@@ -121,7 +135,9 @@ cairyviewer .
 | **Zoom In / Out** | `Mouse Wheel Up` / `Down` (cursor-centered), <kbd>+</kbd> / <kbd>-</kbd> |
 | **Reset Zoom / Fit to Window** | <kbd>0</kbd>, <kbd>R</kbd>, `Double-Click` |
 | **Pan / Move Viewport** | `Left-Click + Drag` (when zoomed in) |
-| **Outbound Drag-and-Drop** | `Left-Click + Drag` into external app (browser, GIMP, chat, etc.) |
+| **Open Context Menu** | `Right-Click` (File location, wallpaper, custom apps) |
+| **Absorb App Shortcut** | `Drag & Drop .desktop file` onto window |
+| **Outbound Drag-and-Drop** | `Left-Click + Drag` into external app (browser, GIMP, chat) |
 | **Toggle Fullscreen** | <kbd>F</kbd>, <kbd>F11</kbd> |
 | **Copy Image to Clipboard** | <kbd>C</kbd>, <kbd>Ctrl</kbd> + <kbd>C</kbd> |
 | **Send to System Trash** | <kbd>Delete</kbd>, <kbd>Shift</kbd> + <kbd>Delete</kbd> |
@@ -131,4 +147,4 @@ cairyviewer .
 
 ## 📄 License
 
-This project is open source and available under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE).
