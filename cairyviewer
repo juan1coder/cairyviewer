@@ -146,7 +146,7 @@ class MagicalViewer(Gtk.Window):
         self.is_fullscreen = False
 
         try:
-            self.set_icon_from_file("/home/yonn/Pictures/ico/cairyimgviewer.png")
+            self.set_icon_from_file("$HOME/.local/share/icons/cairyviewer.png")
         except: pass
 
         # Inbound Drag & Drop
