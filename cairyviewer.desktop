@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Cairy Viewer
+GenericName=Image Viewer
+Comment=Minimalist Cairo & GTK 3 Image Viewer
+Exec=cairyviewer %F
+Terminal=false
+Type=Application
+Icon=cairyviewer
+Categories=Graphics;Viewer;2DGraphics;RasterGraphics;
+MimeType=image/bmp;image/gif;image/jpeg;image/jpg;image/png;image/tiff;image/webp;image/x-portable-pixmap;image/svg+xml;
+StartupNotify=true
